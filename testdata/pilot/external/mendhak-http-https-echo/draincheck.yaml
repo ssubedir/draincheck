@@ -1,0 +1,42 @@
+# Direct-image pilot for mendhak/http-https-echo 41.
+# This service has no dedicated readiness endpoint. The ordinary application route is used as the
+# startup barrier, and readiness withdrawal is observed when the HTTP listener closes.
+version: 1
+
+target:
+  image: ghcr.io/mendhak/http-https-echo@sha256:2046be25f4a2c0bdda662ebfb7c2b7b60fc95c31d97987be143645a8a2194a40
+  container_port: 8080
+  environment:
+    LOG_IGNORE_PATH: ^/draincheck-ready$
+
+readiness:
+  path: /draincheck-ready
+  success_status: 200
+  startup_timeout: 30s
+  interval: 200ms
+
+traffic:
+  request:
+    method: POST
+    path: /demo/orders
+    headers:
+      Content-Type: application/json
+      X-Set-Response-Delay-Ms: "2000"
+      X-Demo-Middleware: draincheck
+    body: '{"order_id":"draincheck-pilot"}'
+    success_statuses: [200]
+  count: 5
+  concurrency: 5
+  shutdown_after: 250ms
+  request_timeout: 8s
+
+shutdown:
+  signal: SIGTERM
+  deadline: 15s
+
+assertions:
+  readiness_withdrawn_within: 2s
+  inflight_requests_complete: true
+  max_failed_requests: 0
+  exit_code: 0
+  forbid_force_kill: true

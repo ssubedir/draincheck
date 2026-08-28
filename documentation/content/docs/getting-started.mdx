@@ -1,0 +1,128 @@
+---
+title: Getting started
+description: Install Draincheck, generate a lifecycle contract, and verify a locally built image.
+---
+
+## Requirements
+
+Draincheck v0.2 tests Linux container images through a local Docker Engine 28.0+ or Podman 4.9+
+runtime. The application needs a safe readiness check and a request or command that remains active
+long enough for Draincheck to initiate termination.
+
+## Install the CLI
+
+Install the current Go module directly:
+
+```bash
+go install github.com/ssubedir/draincheck/cmd/draincheck@latest
+draincheck version
+```
+
+Static release archives are available for Linux `amd64` and `arm64`. Download the current version
+and its checksums from
+[GitHub Releases](https://github.com/ssubedir/draincheck/releases/latest).
+
+## Create a lifecycle contract
+
+Generate a documented starter configuration for the image and its application port:
+
+```bash
+draincheck init --image checkout:local --port 8080
+draincheck validate --config draincheck.yaml
+```
+
+The generated contract follows this shape:
+
+```yaml
+version: 1
+
+target:
+  image: checkout:local
+  container_port: 8080
+
+readiness:
+  driver: http
+  path: /ready
+  success_status: 200
+  startup_timeout: 20s
+  interval: 200ms
+
+traffic:
+  driver: http
+  request:
+    method: GET
+    path: /work?delay=2s
+  count: 5
+  concurrency: 5
+  shutdown_after: 500ms
+  request_timeout: 10s
+
+shutdown:
+  signal: SIGTERM
+  deadline: 15s
+
+assertions:
+  readiness_withdrawn_within: 2s
+  max_failed_requests: 0
+  exit_code: 0
+  forbid_force_kill: true
+```
+
+## What you can configure
+
+The starter uses HTTP readiness and HTTP work, but the YAML contract supports the complete
+lifecycle boundary:
+
+| Section | What it can express |
+|---|---|
+| `target` | The image, default application port, and non-secret container environment. |
+| `readiness` | Startup and withdrawal through HTTP, standard gRPC Health, or an image-owned exec command. |
+| `traffic` | HTTP requests, unary gRPC calls, or a repository-owned command, including concurrency, timing, and post-signal admission policy. |
+| `streaming` | Optional SSE, WebSocket, and server-streaming gRPC connections held across termination. |
+| `telemetry` | Optional correlated OpenTelemetry trace and metric flush verification. |
+| `repeat` | Optional p95 lifecycle budgets enforced by `draincheck repeat`. |
+| `shutdown` | The signal, total deadline, and optional in-container pre-stop command. |
+| `assertions` | Readiness-withdrawal, in-flight completion, failed-request, exit-code, and force-kill expectations. |
+
+See the [configuration reference](/docs/configuration) for every field, default, allowed driver, and
+an extended example. The focused guides explain the protocol-specific behavior in depth.
+
+Adapt `/ready` and `/work` to safe application-owned behavior. The traffic path should use local or
+disposable dependencies and must not call production services or mutate production data. Services
+without an HTTP readiness route can use [gRPC Health or container exec readiness](/docs/readiness).
+
+## Build and verify the image
+
+Build the same image that the pipeline may release, then run its lifecycle contract:
+
+```bash
+docker build -t checkout:local .
+draincheck verify checkout:local \
+  --config draincheck.yaml \
+  --report-json reports/draincheck.json \
+  --report-junit reports/draincheck.xml \
+  --debug-bundle reports/draincheck-debug.zip
+```
+
+Docker is preferred in `--runtime=auto` mode; Podman is the fallback. Specify
+`--runtime docker` or `--runtime podman` when a pipeline must use one explicitly.
+
+## Understand the result
+
+| Exit code | Meaning |
+|---:|---|
+| `0` | Every lifecycle assertion passed. |
+| `1` | Draincheck completed the run and one or more lifecycle assertions failed. |
+| `2` | The command or configuration was invalid. |
+| `3` | A runtime, preflight, reporting, cleanup, or internal error prevented a valid pass. |
+| `130` | Draincheck was interrupted and attempted cleanup. |
+
+Start with the first failed assertion and earliest causal event. The
+[troubleshooting guide](troubleshooting.md) maps every assertion to the most useful evidence.
+
+## Add the CI step
+
+Place Draincheck after the image build and before publishing or deployment. Begin with a
+non-blocking pilot, retain all three report formats, and promote it to a release gate only after the
+team agrees that the scenario exercises meaningful work. The [service-owner pilot guide](pilot-guide.md)
+contains ready-to-adapt GitHub Actions and GitLab CI examples.

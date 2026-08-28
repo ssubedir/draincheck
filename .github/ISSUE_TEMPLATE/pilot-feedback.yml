@@ -1,0 +1,103 @@
+name: Draincheck pilot feedback
+description: Share a service-owner pilot result without proprietary data or logs
+title: "[Pilot] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for piloting Draincheck. This issue is public. Do not include image names, source
+        code, configuration, logs, credentials, customer data, or vulnerability details.
+
+  - type: checkboxes
+    id: public_data
+    attributes:
+      label: Public-data confirmation
+      options:
+        - label: I confirm this report contains no secrets, proprietary data, or vulnerability details.
+          required: true
+
+  - type: input
+    id: service_runtime
+    attributes:
+      label: Service runtime or framework
+      description: Use a generic description such as "Go 1.25 HTTP service".
+      placeholder: Node.js 24 HTTP service
+    validations:
+      required: true
+
+  - type: input
+    id: container_runtime
+    attributes:
+      label: CI platform and container runtime
+      placeholder: GitHub Actions ubuntu-24.04, Docker 28.0.4
+    validations:
+      required: true
+
+  - type: input
+    id: draincheck_version
+    attributes:
+      label: Draincheck version
+      placeholder: v0.2.0
+    validations:
+      required: true
+
+  - type: input
+    id: setup_duration
+    attributes:
+      label: First setup duration
+      description: Include configuration, CI integration, and initial troubleshooting time.
+      placeholder: 12 minutes
+    validations:
+      required: true
+
+  - type: dropdown
+    id: initial_verdict
+    attributes:
+      label: Initial verdict
+      options:
+        - Passed all assertions
+        - Found an application lifecycle defect
+        - Found a container or entrypoint defect
+        - Configuration was invalid
+        - Runtime or orchestration error
+        - Pilot could not be completed
+    validations:
+      required: true
+
+  - type: textarea
+    id: diagnosis
+    attributes:
+      label: Diagnostic usefulness
+      description: Which assertion or artifact helped, and did it lead to a fix? Summarize; do not paste logs.
+      placeholder: The failed assertion showed that readiness stayed available after SIGTERM...
+    validations:
+      required: true
+
+  - type: textarea
+    id: friction
+    attributes:
+      label: Setup friction or false failures
+      description: Describe confusing setup, orchestration issues, or behavior that looked incorrect.
+      placeholder: None, or an anonymized explanation
+    validations:
+      required: true
+
+  - type: dropdown
+    id: release_gate
+    attributes:
+      label: Would you use Draincheck as a release gate?
+      options:
+        - Yes
+        - Yes, after a trial period
+        - No
+        - Undecided
+    validations:
+      required: true
+
+  - type: textarea
+    id: next_improvement
+    attributes:
+      label: Most important improvement
+      description: What single change would make Draincheck more useful in your pipeline?
+    validations:
+      required: true

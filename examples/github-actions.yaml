@@ -1,0 +1,45 @@
+name: container-lifecycle
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  draincheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Build application image
+        run: docker build -t checkout:${{ github.sha }} .
+
+      - name: Install Draincheck
+        shell: bash
+        env:
+          DRAINCHECK_VERSION: v0.2.0
+        run: |
+          set -euo pipefail
+          archive="draincheck_linux_amd64.tar.gz"
+          release_url="https://github.com/ssubedir/draincheck/releases/download/${DRAINCHECK_VERSION}"
+          curl -fsSLo "${archive}" "${release_url}/${archive}"
+          curl -fsSLo SHA256SUMS "${release_url}/SHA256SUMS"
+          grep "  ${archive}$" SHA256SUMS | sha256sum --check --strict -
+          tar -xzf "${archive}"
+          sudo install draincheck /usr/local/bin/draincheck
+
+      - name: Verify container lifecycle
+        run: |
+          draincheck verify "checkout:${{ github.sha }}" \
+            --config draincheck.yaml \
+            --report-json reports/draincheck.json \
+            --report-junit reports/draincheck.xml \
+            --debug-bundle reports/draincheck-debug.zip
+
+      - name: Upload Draincheck evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: draincheck-evidence
+          path: reports/
+          if-no-files-found: ignore

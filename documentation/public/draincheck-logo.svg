@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" role="img" aria-labelledby="title description">
+  <title id="title">Draincheck logo</title>
+  <desc id="description">A rounded container with a letter D and check mark.</desc>
+  <rect width="32" height="32" rx="8" fill="#525252" />
+  <path
+    d="M8.75 8.5h6.1c5.45 0 8.9 2.82 8.9 7.5s-3.45 7.5-8.9 7.5h-6.1v-15Z"
+    fill="none"
+    stroke="#ffffff"
+    stroke-width="3"
+    stroke-linejoin="round"
+  />
+  <path
+    d="m13.25 16.15 2.35 2.35 4.65-5.15"
+    fill="none"
+    stroke="#ffffff"
+    stroke-width="2.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>

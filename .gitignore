@@ -1,0 +1,11 @@
+/bin/
+/dist/
+/reports/
+draincheck.yaml
+!examples/draincheck.yaml
+!testdata/services/good-http/draincheck.yaml
+!testdata/pilot/draincheck.yaml
+!testdata/pilot/*/draincheck.yaml
+!testdata/pilot/external/*/draincheck.yaml
+*.test
+*.out

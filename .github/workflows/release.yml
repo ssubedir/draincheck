@@ -1,0 +1,212 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions: {}
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Require a release tag on main
+        shell: bash
+        run: |
+          if [[ ! "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]; then
+            echo "::error::release tag must be a v-prefixed semantic version without build metadata"
+            exit 1
+          fi
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          if ! git merge-base --is-ancestor "${GITHUB_SHA}" origin/main; then
+            echo "::error::release tag must point to a commit on main"
+            exit 1
+          fi
+      - name: Require the Apache License 2.0
+        shell: bash
+        run: |
+          if [[ ! -f LICENSE ]]; then
+            echo "::error::LICENSE is required before publishing a release"
+            exit 1
+          fi
+          license_sha256="$(tr -d '\r' < LICENSE | sha256sum | awk '{print $1}')"
+          if [[ "${license_sha256}" != "dbf00e67ea3d79687196d06c87fcfe0b86c36b355e68b99ae1ae13010dc9ab7b" ]]; then
+            echo "::error::LICENSE must match the project's canonical Apache License 2.0 text"
+            exit 1
+          fi
+      - run: go mod verify
+      - name: Check formatting
+        shell: bash
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [[ -n "${unformatted}" ]]; then
+            echo "${unformatted}"
+            echo "::error::run gofmt on the files listed above"
+            exit 1
+          fi
+      - run: go vet ./...
+      - run: go tool staticcheck ./...
+      - run: go test -race ./...
+      - run: go tool govulncheck ./...
+      - name: Verify committed schema
+        run: |
+          go run ./cmd/draincheck schema --output /tmp/draincheck.schema.json
+          diff -u schema/draincheck.schema.json /tmp/draincheck.schema.json
+      - name: Resolve reproducible build date
+        id: build
+        run: |
+          commit_date="$(git show -s --format=%cI "${GITHUB_SHA}")"
+          build_date="$(date -u -d "${commit_date}" +%Y-%m-%dT%H:%M:%SZ)"
+          echo "date=${build_date}" >> "${GITHUB_OUTPUT}"
+      - name: Dogfood release candidate
+        env:
+          VERSION: ${{ github.ref_name }}
+          COMMIT: ${{ github.sha }}
+          BUILD_DATE: ${{ steps.build.outputs.date }}
+          DOGFOOD_IMAGE: draincheck-good:release-${{ github.sha }}
+          DOGFOOD_REPORT_DIR: reports/release-dogfood
+        run: make dogfood
+      - name: Upload release-candidate evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: release-candidate-evidence
+          path: reports/release-dogfood/
+          if-no-files-found: warn
+
+  build-binaries:
+    needs: validate
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Resolve reproducible build date
+        id: build
+        shell: bash
+        run: |
+          commit_date="$(git show -s --format=%cI "${GITHUB_SHA}")"
+          build_date="$(date -u -d "${commit_date}" +%Y-%m-%dT%H:%M:%SZ)"
+          echo "date=${build_date}" >> "${GITHUB_OUTPUT}"
+      - name: Package linux/${{ matrix.arch }}
+        run: |
+          go run ./tools/release package \
+            --version "${GITHUB_REF_NAME}" \
+            --commit "${GITHUB_SHA}" \
+            --date "${{ steps.build.outputs.date }}" \
+            --arch "${{ matrix.arch }}" \
+            --output dist
+      - name: Smoke-test native binary
+        run: |
+          mkdir -p "smoke/${{ matrix.arch }}"
+          tar -xzf "dist/draincheck_linux_${{ matrix.arch }}.tar.gz" -C "smoke/${{ matrix.arch }}"
+          "smoke/${{ matrix.arch }}/draincheck" version | tee /tmp/draincheck-version
+          grep -F "draincheck ${GITHUB_REF_NAME} (commit ${GITHUB_SHA}, built ${{ steps.build.outputs.date }})" /tmp/draincheck-version
+          "smoke/${{ matrix.arch }}/draincheck" schema > /dev/null
+          "smoke/${{ matrix.arch }}/draincheck" validate --config testdata/services/good-http/draincheck.yaml
+      - name: Attest binary archive provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: dist/draincheck_linux_${{ matrix.arch }}.tar.gz
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: release-binary-${{ matrix.arch }}
+          path: dist/draincheck_linux_${{ matrix.arch }}.tar.gz
+          if-no-files-found: error
+
+  publish-release:
+    needs: [validate, build-binaries]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          pattern: release-binary-*
+          path: dist
+          merge-multiple: true
+      - name: Extract archives for SBOM generation
+        run: |
+          mkdir -p sbom/amd64 sbom/arm64
+          tar -xzf dist/draincheck_linux_amd64.tar.gz -C sbom/amd64
+          tar -xzf dist/draincheck_linux_arm64.tar.gz -C sbom/arm64
+      - name: Generate amd64 SPDX SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          path: sbom/amd64
+          format: spdx-json
+          output-file: dist/draincheck_linux_amd64.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
+      - name: Generate arm64 SPDX SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          path: sbom/arm64
+          format: spdx-json
+          output-file: dist/draincheck_linux_arm64.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
+      - name: Generate checksums
+        run: go run ./tools/release checksums --output dist
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - name: Sign checksum manifest with GitHub OIDC
+        run: cosign sign-blob --yes --bundle dist/SHA256SUMS.sigstore.json dist/SHA256SUMS
+      - name: Attest amd64 SBOM
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: dist/draincheck_linux_amd64.tar.gz
+          sbom-path: dist/draincheck_linux_amd64.spdx.json
+      - name: Attest arm64 SBOM
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: dist/draincheck_linux_arm64.tar.gz
+          sbom-path: dist/draincheck_linux_arm64.spdx.json
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          flags=(--draft --verify-tag --generate-notes --title "${GITHUB_REF_NAME}")
+          if [[ "${GITHUB_REF_NAME}" == *-* ]]; then
+            flags+=(--prerelease)
+          fi
+          if gh release view "${GITHUB_REF_NAME}" > /dev/null 2>&1; then
+            gh release upload "${GITHUB_REF_NAME}" dist/* --clobber
+          else
+            gh release create "${GITHUB_REF_NAME}" dist/* "${flags[@]}"
+          fi
+          gh release edit "${GITHUB_REF_NAME}" --draft=false

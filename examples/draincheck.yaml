@@ -1,0 +1,64 @@
+# Starter configuration for piloting Draincheck against a built application image.
+# Replace the four PILOT values below. The image can also be supplied to `verify`.
+version: 1
+
+target:
+  image: checkout:local # PILOT: image built by the pipeline
+  container_port: 8080 # PILOT: default probe port exposed by the application
+  environment: {} # PILOT: non-secret environment variables required at startup
+
+readiness:
+  driver: http # PILOT: use grpc for standard health or exec for an image-owned command
+  path: /ready # PILOT: endpoint that stops succeeding during shutdown
+  success_status: 200
+  # grpc:
+  #   service: "" # empty checks overall server health
+  # exec:
+  #   command: ["/app/healthcheck", "--ready"] # exit 0 means ready; no readiness port is published
+  startup_timeout: 20s
+  interval: 200ms
+
+traffic:
+  request:
+    method: GET
+    path: /work?delay=2s # PILOT: safe request that remains active for 2-5 seconds
+    headers: {}
+  count: 5
+  concurrency: 5
+  shutdown_after: 500ms
+  request_timeout: 10s
+  post_signal:
+    policy: disabled # PILOT: set accept or reject to assert how new work is handled
+    delay: 0s
+    count: 1
+
+telemetry:
+  traces:
+    enabled: false # PILOT: require correlated in-flight spans to reach Draincheck during shutdown
+    minimum_correlated_spans: 1
+    flush_timeout: 2s
+  metrics:
+    enabled: false # PILOT: require post-work metric points to reach Draincheck during shutdown
+    minimum_data_points: 1
+    flush_timeout: 2s
+
+repeat:
+  budgets:
+    # PILOT: uncomment stable p95 limits to make repeat mode enforce lifecycle regressions
+    # startup_ready_p95: 2s
+    # readiness_withdrawal_p95: 750ms
+    # container_exit_p95: 5s
+
+shutdown:
+  signal: SIGTERM
+  deadline: 15s
+  # pre_stop: # optional container exec hook; use --profile kubernetes for Kubernetes ordering/defaults
+  #   exec:
+  #     command: ["/app/pre-stop", "--drain"]
+
+assertions:
+  readiness_withdrawn_within: 2s
+  inflight_requests_complete: true
+  max_failed_requests: 0
+  exit_code: 0
+  forbid_force_kill: true

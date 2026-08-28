@@ -1,0 +1,49 @@
+---
+title: Overview
+description: Test whether the container image produced by CI starts, serves work, drains on termination, and exits cleanly.
+---
+
+Draincheck is a provider-neutral CLI for running lifecycle tests against the final Linux container
+image that a pipeline may release. It starts an isolated container with Docker or Podman, waits for
+readiness, holds real work across the termination boundary, and produces CI-safe evidence about
+draining and exit behavior.
+
+Think of it as a lifecycle unit test for the built image—not a load test, deployment tool, or
+platform compatibility checker.
+
+<Cards>
+  <Card title="Get started" description="Install Draincheck and verify a local image in one CI-shaped run." href="/docs/getting-started" />
+  <Card title="Pilot a service" description="Add a non-blocking lifecycle check to an existing service pipeline." href="/docs/pilot-guide" />
+  <Card title="Troubleshoot a failure" description="Read assertions, timelines, reports, and debug evidence in causal order." href="/docs/troubleshooting" />
+  <Card title="Support boundary" description="See the exact v0.2 runtime, platform, and stability guarantees." href="/docs/support" />
+</Cards>
+
+## The lifecycle contract
+
+One `draincheck verify` run proves that:
+
+1. The image starts and reaches its configured readiness condition.
+2. HTTP, gRPC, or repository-owned command traffic is genuinely active.
+3. The configured termination signal reaches the container.
+4. Readiness is withdrawn and in-flight work completes within its budgets.
+5. Optional streams and OpenTelemetry signals flush before exit.
+6. The container exits with the expected code without an OOM kill or forced cleanup.
+
+Every run uses a unique container name and label, publishes selected ports on random loopback
+addresses, bounds untrusted output, and removes the exact container it created.
+
+## Choose your path
+
+<Cards>
+  <Card title="HTTP services" description="Send concurrent requests with bodies, headers, and exact status contracts." href="/docs/http-traffic" />
+  <Card title="gRPC services" description="Use unary calls, server streams, descriptors, reflection, and gRPC Health." href="/docs/grpc" />
+  <Card title="Long-lived connections" description="Verify SSE and WebSocket shutdown behavior alongside ordinary traffic." href="/docs/streaming" />
+  <Card title="Kubernetes profile" description="Model a shared grace period and an image-owned pre-stop hook before SIGTERM." href="/docs/profiles" />
+</Cards>
+
+## Designed for pipelines
+
+Draincheck returns stable exit codes and can write JSON, JUnit, and bounded debug artifacts. It
+tests a locally built image by default and never pulls implicitly when `--pull=never` is selected.
+Use `repeat` to expose intermittent lifecycle behavior and `suite` when one image needs several
+independent contracts.

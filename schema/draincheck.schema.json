@@ -1,0 +1,632 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/ssubedir/draincheck/main/schema/draincheck.schema.json",
+  "$defs": {
+    "Assertions": {
+      "properties": {
+        "readiness_withdrawn_within": {
+          "type": "string",
+          "pattern": "^[0-9]"
+        },
+        "inflight_requests_complete": {
+          "type": "boolean"
+        },
+        "max_failed_requests": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "exit_code": {
+          "type": "integer"
+        },
+        "forbid_force_kill": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "readiness_withdrawn_within"
+      ]
+    },
+    "CommandTraffic": {
+      "properties": {
+        "executable": {
+          "type": "string"
+        },
+        "args": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "maxItems": 64
+        },
+        "environment": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "working_directory": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "ExecHook": {
+      "properties": {
+        "command": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "maxItems": 64,
+          "minItems": 1
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "command"
+      ]
+    },
+    "ExecReadiness": {
+      "properties": {
+        "command": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "maxItems": 64,
+          "minItems": 1
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "GRPCReadiness": {
+      "properties": {
+        "service": {
+          "type": "string",
+          "maxLength": 1024
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "GRPCStreaming": {
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "container_port": {
+          "type": "integer",
+          "maximum": 65535,
+          "minimum": 1
+        },
+        "method": {
+          "type": "string"
+        },
+        "request": {
+          "type": "string",
+          "maxLength": 1048576
+        },
+        "request_file": {
+          "type": "string"
+        },
+        "metadata": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "descriptor_set": {
+          "type": "string"
+        },
+        "minimum_messages": {
+          "type": "integer",
+          "maximum": 10000,
+          "minimum": 1
+        },
+        "expected_code": {
+          "type": "string"
+        },
+        "establish_timeout": {
+          "type": "string",
+          "pattern": "^[0-9]"
+        },
+        "close_timeout": {
+          "type": "string",
+          "pattern": "^[0-9]"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "minimum_messages",
+        "expected_code",
+        "establish_timeout",
+        "close_timeout"
+      ]
+    },
+    "GRPCTraffic": {
+      "properties": {
+        "method": {
+          "type": "string"
+        },
+        "request": {
+          "type": "string",
+          "maxLength": 1048576
+        },
+        "request_file": {
+          "type": "string"
+        },
+        "metadata": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "descriptor_set": {
+          "type": "string"
+        },
+        "expected_codes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "maxItems": 17
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "MetricTelemetry": {
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "minimum_data_points": {
+          "type": "integer",
+          "maximum": 10000,
+          "minimum": 1
+        },
+        "flush_timeout": {
+          "type": "string",
+          "pattern": "^[0-9]"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "PostSignalTraffic": {
+      "properties": {
+        "policy": {
+          "type": "string",
+          "enum": [
+            "disabled",
+            "accept",
+            "reject"
+          ]
+        },
+        "delay": {
+          "type": "string",
+          "pattern": "^[0-9]"
+        },
+        "count": {
+          "type": "integer",
+          "maximum": 100,
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "policy",
+        "delay",
+        "count"
+      ]
+    },
+    "PreStopHook": {
+      "properties": {
+        "exec": {
+          "$ref": "#/$defs/ExecHook"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "exec"
+      ]
+    },
+    "Readiness": {
+      "properties": {
+        "driver": {
+          "type": "string",
+          "enum": [
+            "http",
+            "grpc",
+            "exec"
+          ]
+        },
+        "container_port": {
+          "type": "integer",
+          "maximum": 65535,
+          "minimum": 1
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^/"
+        },
+        "success_status": {
+          "type": "integer",
+          "maximum": 599,
+          "minimum": 100
+        },
+        "grpc": {
+          "$ref": "#/$defs/GRPCReadiness"
+        },
+        "exec": {
+          "$ref": "#/$defs/ExecReadiness"
+        },
+        "startup_timeout": {
+          "type": "string",
+          "pattern": "^[0-9]"
+        },
+        "interval": {
+          "type": "string",
+          "pattern": "^[0-9]"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "startup_timeout",
+        "interval"
+      ]
+    },
+    "Repeat": {
+      "properties": {
+        "budgets": {
+          "$ref": "#/$defs/RepeatBudgets"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "RepeatBudgets": {
+      "properties": {
+        "startup_ready_p95": {
+          "type": "string",
+          "pattern": "^[0-9]"
+        },
+        "readiness_withdrawal_p95": {
+          "type": "string",
+          "pattern": "^[0-9]"
+        },
+        "container_exit_p95": {
+          "type": "string",
+          "pattern": "^[0-9]"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "Request": {
+      "properties": {
+        "method": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^/"
+        },
+        "headers": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "body": {
+          "type": "string",
+          "maxLength": 1048576
+        },
+        "body_file": {
+          "type": "string"
+        },
+        "success_statuses": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array",
+          "maxItems": 100
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "method",
+        "path"
+      ]
+    },
+    "SSEStreaming": {
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "container_port": {
+          "type": "integer",
+          "maximum": 65535,
+          "minimum": 1
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^/"
+        },
+        "headers": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "initial_event": {
+          "type": "string"
+        },
+        "terminal_event": {
+          "type": "string"
+        },
+        "establish_timeout": {
+          "type": "string",
+          "pattern": "^[0-9]"
+        },
+        "close_timeout": {
+          "type": "string",
+          "pattern": "^[0-9]"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "path",
+        "initial_event",
+        "establish_timeout",
+        "close_timeout"
+      ]
+    },
+    "Shutdown": {
+      "properties": {
+        "signal": {
+          "type": "string",
+          "pattern": "^SIG[A-Z0-9]+$"
+        },
+        "deadline": {
+          "type": "string",
+          "pattern": "^[0-9]"
+        },
+        "pre_stop": {
+          "$ref": "#/$defs/PreStopHook"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "signal",
+        "deadline"
+      ]
+    },
+    "Streaming": {
+      "properties": {
+        "sse": {
+          "$ref": "#/$defs/SSEStreaming"
+        },
+        "websocket": {
+          "$ref": "#/$defs/WebSocketStreaming"
+        },
+        "grpc": {
+          "$ref": "#/$defs/GRPCStreaming"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "Target": {
+      "properties": {
+        "image": {
+          "type": "string"
+        },
+        "container_port": {
+          "type": "integer",
+          "maximum": 65535,
+          "minimum": 1
+        },
+        "environment": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "container_port"
+      ]
+    },
+    "Telemetry": {
+      "properties": {
+        "traces": {
+          "$ref": "#/$defs/TraceTelemetry"
+        },
+        "metrics": {
+          "$ref": "#/$defs/MetricTelemetry"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "TraceTelemetry": {
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "minimum_correlated_spans": {
+          "type": "integer",
+          "maximum": 100,
+          "minimum": 1
+        },
+        "flush_timeout": {
+          "type": "string",
+          "pattern": "^[0-9]"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "Traffic": {
+      "properties": {
+        "container_port": {
+          "type": "integer",
+          "maximum": 65535,
+          "minimum": 1
+        },
+        "driver": {
+          "type": "string",
+          "enum": [
+            "http",
+            "command",
+            "grpc"
+          ]
+        },
+        "request": {
+          "$ref": "#/$defs/Request"
+        },
+        "command": {
+          "$ref": "#/$defs/CommandTraffic"
+        },
+        "grpc": {
+          "$ref": "#/$defs/GRPCTraffic"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "concurrency": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "shutdown_after": {
+          "type": "string",
+          "pattern": "^[0-9]"
+        },
+        "request_timeout": {
+          "type": "string",
+          "pattern": "^[0-9]"
+        },
+        "post_signal": {
+          "$ref": "#/$defs/PostSignalTraffic"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "count",
+        "concurrency",
+        "shutdown_after",
+        "request_timeout"
+      ]
+    },
+    "WebSocketStreaming": {
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "container_port": {
+          "type": "integer",
+          "maximum": 65535,
+          "minimum": 1
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^/"
+        },
+        "headers": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "subprotocols": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "maxItems": 16
+        },
+        "terminal_message": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "close_code": {
+          "type": "integer",
+          "maximum": 4999,
+          "minimum": 1000
+        },
+        "establish_timeout": {
+          "type": "string",
+          "pattern": "^[0-9]"
+        },
+        "close_timeout": {
+          "type": "string",
+          "pattern": "^[0-9]"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "path",
+        "close_code",
+        "establish_timeout",
+        "close_timeout"
+      ]
+    }
+  },
+  "properties": {
+    "version": {
+      "type": "integer"
+    },
+    "target": {
+      "$ref": "#/$defs/Target"
+    },
+    "readiness": {
+      "$ref": "#/$defs/Readiness"
+    },
+    "traffic": {
+      "$ref": "#/$defs/Traffic"
+    },
+    "streaming": {
+      "$ref": "#/$defs/Streaming"
+    },
+    "telemetry": {
+      "$ref": "#/$defs/Telemetry"
+    },
+    "repeat": {
+      "$ref": "#/$defs/Repeat"
+    },
+    "shutdown": {
+      "$ref": "#/$defs/Shutdown"
+    },
+    "assertions": {
+      "$ref": "#/$defs/Assertions"
+    }
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "version",
+    "target",
+    "readiness",
+    "traffic",
+    "shutdown",
+    "assertions"
+  ]
+}

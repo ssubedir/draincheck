@@ -1,0 +1,28 @@
+{
+  "title": "Draincheck",
+  "pages": [
+    "index",
+    "getting-started",
+    "---Lifecycle contract---",
+    "configuration",
+    "readiness",
+    "http-traffic",
+    "grpc",
+    "command-probes",
+    "post-signal-policy",
+    "profiles",
+    "---Long-lived work---",
+    "streaming",
+    "websocket",
+    "telemetry",
+    "---CI workflows---",
+    "repeat",
+    "suite",
+    "troubleshooting",
+    "support",
+    "---Adoption---",
+    "pilot-guide",
+    "pilots",
+    "pilot-results"
+  ]
+}

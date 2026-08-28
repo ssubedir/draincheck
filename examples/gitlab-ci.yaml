@@ -1,0 +1,24 @@
+draincheck:
+  stage: test
+  image: golang:1.25
+  services:
+    - docker:29-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+  script:
+    - docker build -t "checkout:${CI_COMMIT_SHA}" .
+    - go install github.com/ssubedir/draincheck/cmd/draincheck@v0.2.0
+    - >
+      draincheck verify "checkout:${CI_COMMIT_SHA}"
+      --config draincheck.yaml
+      --report-json reports/draincheck.json
+      --report-junit reports/draincheck.xml
+      --debug-bundle reports/draincheck-debug.zip
+  artifacts:
+    when: always
+    paths:
+      - reports/draincheck.json
+      - reports/draincheck-debug.zip
+    reports:
+      junit: reports/draincheck.xml

@@ -1,0 +1,93 @@
+name: Join the Draincheck pilot
+description: Volunteer a containerized HTTP service for a service-owner evaluation
+title: "[Pilot request] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Draincheck is looking for service owners to evaluate lifecycle testing in a real CI
+        pipeline. This issue is public. Describe the service generically and do not include image
+        names, source code, configuration, logs, credentials, customer data, or vulnerabilities.
+
+  - type: checkboxes
+    id: public_data
+    attributes:
+      label: Public-data confirmation
+      options:
+        - label: I confirm this request contains no secrets, proprietary data, or vulnerability details.
+          required: true
+
+  - type: checkboxes
+    id: service_owner
+    attributes:
+      label: Service ownership
+      options:
+        - label: I maintain this service or have its maintainers' approval to run the pilot.
+          required: true
+
+  - type: input
+    id: service_runtime
+    attributes:
+      label: Service runtime or framework
+      description: Use a generic description such as "Java 21 HTTP service".
+      placeholder: Python 3.14 HTTP service
+    validations:
+      required: true
+
+  - type: input
+    id: ci_runtime
+    attributes:
+      label: CI platform and container runtime
+      placeholder: GitLab CI with Docker 28
+    validations:
+      required: true
+
+  - type: dropdown
+    id: linux_image
+    attributes:
+      label: Does the pipeline build a Linux container image?
+      options:
+        - "Yes"
+        - "No"
+        - Unsure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: readiness
+    attributes:
+      label: Does the service expose a plaintext HTTP readiness endpoint?
+      options:
+        - "Yes"
+        - "No"
+        - Unsure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: safe_request
+    attributes:
+      label: Can the pilot use a safe request that remains active for 2-5 seconds?
+      options:
+        - "Yes"
+        - "No"
+        - Unsure
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: pilot_commitment
+    attributes:
+      label: Pilot commitment
+      options:
+        - label: I can try the setup, run it in CI at least three times, and provide anonymized feedback.
+          required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: What would make this pilot useful?
+      description: Describe the lifecycle risk or question you want to evaluate without identifying the service.
+      placeholder: We want to verify that slow requests finish before our shutdown deadline.
+    validations:
+      required: true

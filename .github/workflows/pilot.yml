@@ -1,0 +1,174 @@
+name: Runtime pilots
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * 1"
+  pull_request:
+    paths:
+      - ".github/workflows/pilot.yml"
+      - "testdata/pilot/**"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/pilot.yml"
+      - "testdata/pilot/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: runtime-pilots-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pilot:
+    name: ${{ matrix.case }} / Docker
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        case: [node, python, java, dotnet]
+
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Verify Go modules
+        run: go mod verify
+
+      - name: Run runtime pilot
+        env:
+          DRAINCHECK_PILOT_RUNTIME: docker
+          DRAINCHECK_PILOT_CASE: ${{ matrix.case }}
+          DRAINCHECK_PILOT_REPORT_DIR: reports/pilot-${{ matrix.case }}
+        run: go test -v -count=1 ./testdata/pilot
+
+      - name: Upload pilot evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: draincheck-pilot-${{ matrix.case }}
+          path: reports/pilot-${{ matrix.case }}/
+          if-no-files-found: warn
+          retention-days: 14
+
+  external-image:
+    name: ${{ matrix.case }} / Docker
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - case: go-httpbin
+            config: testdata/pilot/external/go-httpbin/draincheck.yaml
+            expected_exit: 0
+            expected_passed: "true"
+            expected_failed_assertions: ""
+          - case: postman-httpbin
+            config: testdata/pilot/external/postman-httpbin/draincheck.yaml
+            expected_exit: 0
+            expected_passed: "true"
+            expected_failed_assertions: ""
+          - case: mendhak-http-https-echo
+            config: testdata/pilot/external/mendhak-http-https-echo/draincheck.yaml
+            expected_exit: 0
+            expected_passed: "true"
+            expected_failed_assertions: ""
+          - case: traefik-whoami
+            config: testdata/pilot/external/traefik-whoami/draincheck.yaml
+            expected_exit: 1
+            expected_passed: "false"
+            expected_failed_assertions: traffic.inflight_exercised,traffic.failed_requests,shutdown.exit_code
+
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Verify Go modules
+        run: go mod verify
+
+      - name: Build Draincheck
+        run: go build -trimpath -o bin/draincheck ./cmd/draincheck
+
+      - name: Prepare public-image pilot
+        env:
+          REPORT_DIRECTORY: reports/external-pilots/${{ matrix.case }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$REPORT_DIRECTORY"
+          docker --version | tee "$REPORT_DIRECTORY/runtime-version.txt"
+
+      - name: Verify pinned external project
+        env:
+          CONFIG: ${{ matrix.config }}
+          EXPECTED_EXIT: ${{ matrix.expected_exit }}
+          EXPECTED_FAILED_ASSERTIONS: ${{ matrix.expected_failed_assertions }}
+          EXPECTED_PASSED: ${{ matrix.expected_passed }}
+          REPORT_DIRECTORY: reports/external-pilots/${{ matrix.case }}
+        run: |
+          set -euo pipefail
+          arguments=(verify)
+          arguments+=(
+            --runtime docker
+            --pull missing
+            --config "$CONFIG"
+            --report-json "$REPORT_DIRECTORY/draincheck.json"
+            --report-junit "$REPORT_DIRECTORY/draincheck.xml"
+            --debug-bundle "$REPORT_DIRECTORY/draincheck-debug.zip"
+            --no-color
+          )
+
+          set +e
+          ./bin/draincheck "${arguments[@]}" 2>&1 | tee "$REPORT_DIRECTORY/console.txt"
+          actual_exit="${PIPESTATUS[0]}"
+          set -e
+          printf '%s\n' "$actual_exit" > "$REPORT_DIRECTORY/exit-code.txt"
+          if [[ "$actual_exit" -ne "$EXPECTED_EXIT" ]]; then
+            echo "expected Draincheck exit $EXPECTED_EXIT, got $actual_exit" >&2
+            exit 1
+          fi
+
+          python3 - "$REPORT_DIRECTORY/draincheck.json" "$EXPECTED_PASSED" "$EXPECTED_FAILED_ASSERTIONS" <<'PY'
+          import json
+          import sys
+
+          report_path, expected_passed_value, required_value = sys.argv[1:]
+          with open(report_path, encoding="utf-8") as report_file:
+              report = json.load(report_file)
+
+          expected_passed = expected_passed_value == "true"
+          if report.get("passed") is not expected_passed:
+              raise SystemExit(
+                  f"report passed={report.get('passed')!r}, expected {expected_passed!r}"
+              )
+
+          failed = {
+              assertion["name"]
+              for assertion in report.get("assertions", [])
+              if not assertion.get("passed", False)
+          }
+          required = {name for name in required_value.split(",") if name}
+          missing = required - failed
+          if missing:
+              raise SystemExit(f"missing expected failed assertions: {sorted(missing)}")
+          if expected_passed and failed:
+              raise SystemExit(f"passing pilot has failed assertions: {sorted(failed)}")
+          PY
+
+      - name: Upload external pilot evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: draincheck-external-${{ matrix.case }}
+          path: reports/external-pilots/${{ matrix.case }}/
+          if-no-files-found: warn
+          retention-days: 14
