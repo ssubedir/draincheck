@@ -14,7 +14,6 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ssubedir/draincheck/actions/workflows/ci.yml"><img src="https://github.com/ssubedir/draincheck/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status"></a>
   <a href="https://github.com/ssubedir/draincheck/releases"><img src="https://img.shields.io/github/v/release/ssubedir/draincheck" alt="Latest release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/ssubedir/draincheck" alt="Apache 2.0 license"></a>
 </p>
