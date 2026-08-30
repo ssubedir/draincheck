@@ -161,10 +161,10 @@ func TestLoadSuiteScenariosRejectsDuplicateNamesAndImages(t *testing.T) {
 	root := t.TempDir()
 	firstDirectory := filepath.Join(root, "first")
 	secondDirectory := filepath.Join(root, "second")
-	if err := os.MkdirAll(firstDirectory, 0o755); err != nil {
+	if err := os.MkdirAll(firstDirectory, 0o750); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.MkdirAll(secondDirectory, 0o755); err != nil {
+	if err := os.MkdirAll(secondDirectory, 0o750); err != nil {
 		t.Fatal(err)
 	}
 	first := filepath.Join(firstDirectory, "http.yaml")

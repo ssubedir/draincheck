@@ -122,7 +122,7 @@ func (c *Client) reflectV1(ctx context.Context, serviceName string) ([][]byte, e
 	if err != nil {
 		return nil, fmt.Errorf("start gRPC reflection v1: %w", err)
 	}
-	defer stream.CloseSend()
+	defer func() { _ = stream.CloseSend() }()
 	if err := stream.Send(&reflectionv1.ServerReflectionRequest{
 		MessageRequest: &reflectionv1.ServerReflectionRequest_FileContainingSymbol{FileContainingSymbol: serviceName},
 	}); err != nil {

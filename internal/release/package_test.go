@@ -38,11 +38,11 @@ func TestWriteArchiveIsReproducibleAndNormalizesMetadata(t *testing.T) {
 	if err := writeArchive(second, entries, timestamp.UTC()); err != nil {
 		t.Fatal(err)
 	}
-	firstData, err := os.ReadFile(first)
+	firstData, err := os.ReadFile(first) // #nosec G304 -- Test paths are created under t.TempDir.
 	if err != nil {
 		t.Fatal(err)
 	}
-	secondData, err := os.ReadFile(second)
+	secondData, err := os.ReadFile(second) // #nosec G304 -- Test paths are created under t.TempDir.
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,16 +50,16 @@ func TestWriteArchiveIsReproducibleAndNormalizesMetadata(t *testing.T) {
 		t.Fatal("archives from identical inputs differ")
 	}
 
-	file, err := os.Open(first)
+	file, err := os.Open(first) // #nosec G304 -- Test paths are created under t.TempDir.
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	gzipReader, err := gzip.NewReader(file)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer gzipReader.Close()
+	defer func() { _ = gzipReader.Close() }()
 	if !gzipReader.ModTime.Equal(timestamp.UTC()) {
 		t.Errorf("gzip timestamp = %s, want %s", gzipReader.ModTime, timestamp.UTC())
 	}
@@ -104,7 +104,7 @@ func TestWriteChecksumsIsSortedAndExcludesSignatureBundle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G304 -- Test paths are created under t.TempDir.
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -219,27 +219,27 @@ func (r *Report) WriteHuman(writer io.Writer) {
 	if !r.Passed {
 		verdict = "FAIL"
 	}
-	fmt.Fprintf(writer, "%s %s (%s)\n\n", verdict, r.Image, time.Duration(r.DurationMS)*time.Millisecond)
+	_, _ = fmt.Fprintf(writer, "%s %s (%s)\n\n", verdict, r.Image, time.Duration(r.DurationMS)*time.Millisecond)
 	for _, event := range r.Events {
-		fmt.Fprintf(writer, "%7.3fs  %-12s %s\n", float64(event.ElapsedMS)/1000, event.Phase, event.Message)
+		_, _ = fmt.Fprintf(writer, "%7.3fs  %-12s %s\n", float64(event.ElapsedMS)/1000, event.Phase, event.Message)
 	}
 
 	failed := r.FailedAssertions()
 	if len(failed) > 0 {
-		fmt.Fprintln(writer, "\nFailed assertions:")
+		_, _ = fmt.Fprintln(writer, "\nFailed assertions:")
 		for _, assertion := range failed {
-			fmt.Fprintf(writer, "  - %s: %s\n", assertion.Name, assertion.Message)
+			_, _ = fmt.Fprintf(writer, "  - %s: %s\n", assertion.Name, assertion.Message)
 		}
 		if hint := diagnosticHint(failed); hint != "" {
-			fmt.Fprintf(writer, "\nHint: %s\n", hint)
+			_, _ = fmt.Fprintf(writer, "\nHint: %s\n", hint)
 		}
 	}
 	if r.Retained != "" {
-		fmt.Fprintf(writer, "\nRetained container: %s\n", r.Retained)
+		_, _ = fmt.Fprintf(writer, "\nRetained container: %s\n", r.Retained)
 	}
 	if !r.Passed && strings.TrimSpace(r.Logs) != "" {
-		fmt.Fprintln(writer, "\nContainer logs:")
-		fmt.Fprintln(writer, strings.TrimSpace(r.Logs))
+		_, _ = fmt.Fprintln(writer, "\nContainer logs:")
+		_, _ = fmt.Fprintln(writer, strings.TrimSpace(r.Logs))
 	}
 }
 

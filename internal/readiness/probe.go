@@ -55,7 +55,7 @@ func (c *HTTPChecker) Check(ctx context.Context) Observation {
 	if err != nil {
 		return Observation{Description: err.Error(), Duration: time.Since(started), Err: err}
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, 4<<10))
 	return Observation{
 		Ready:       response.StatusCode == c.successStatus,

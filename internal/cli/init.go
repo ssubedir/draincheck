@@ -33,18 +33,18 @@ func newInitCommand(stdout io.Writer) *cobra.Command {
 			} else {
 				flags |= os.O_EXCL
 			}
-			file, err := os.OpenFile(output, flags, 0o644)
+			file, err := os.OpenFile(output, flags, 0o644) // #nosec G302 G304 -- Contracts are non-secret files written to the requested path.
 			if err != nil {
 				return &exitError{code: 2, err: fmt.Errorf("write %s: %w", output, err)}
 			}
 			if _, err := io.WriteString(file, content); err != nil {
-				file.Close()
+				_ = file.Close()
 				return &exitError{code: 3, err: fmt.Errorf("write %s: %w", output, err)}
 			}
 			if err := file.Close(); err != nil {
 				return &exitError{code: 3, err: fmt.Errorf("close %s: %w", output, err)}
 			}
-			fmt.Fprintf(stdout, "wrote %s\n", output)
+			_, _ = fmt.Fprintf(stdout, "wrote %s\n", output)
 			return nil
 		},
 	}

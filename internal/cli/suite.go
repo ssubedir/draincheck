@@ -86,7 +86,7 @@ func newSuiteCommand(stdout io.Writer) *cobra.Command {
 			summary.Profile = string(profile)
 			var primaryErr error
 			for index, scenario := range scenarios {
-				fmt.Fprintf(stdout, "Scenario %d/%d %s: ", index+1, len(scenarios), scenario.name)
+				_, _ = fmt.Fprintf(stdout, "Scenario %d/%d %s: ", index+1, len(scenarios), scenario.name)
 				result, runErr := lifecycle.Verify(command.Context(), scenario.config, runtime, lifecycle.Options{
 					PullPolicy: pull,
 					LogLimit:   logLimit,
@@ -106,13 +106,13 @@ func newSuiteCommand(stdout io.Writer) *cobra.Command {
 						runErr = reportErr
 					}
 					if result.Passed && runErr == nil {
-						fmt.Fprintf(stdout, "PASS (%s)\n", time.Duration(result.DurationMS)*time.Millisecond)
+						_, _ = fmt.Fprintf(stdout, "PASS (%s)\n", time.Duration(result.DurationMS)*time.Millisecond)
 					} else {
-						fmt.Fprintln(stdout)
+						_, _ = fmt.Fprintln(stdout)
 						result.WriteHuman(stdout)
 					}
 				} else {
-					fmt.Fprintln(stdout, "ERROR")
+					_, _ = fmt.Fprintln(stdout, "ERROR")
 				}
 				summary.Add(scenario.name, scenario.configPath, result, runErr, filepath.ToSlash(artifactDirectory))
 				if runErr != nil {
@@ -128,7 +128,7 @@ func newSuiteCommand(stdout io.Writer) *cobra.Command {
 				primaryErr = err
 			}
 			summary.WriteHuman(stdout)
-			fmt.Fprintf(stdout, "\nEvidence: %s\n", reportDirectory)
+			_, _ = fmt.Fprintf(stdout, "\nEvidence: %s\n", reportDirectory)
 
 			if primaryErr != nil {
 				if errors.Is(primaryErr, context.Canceled) || command.Context().Err() != nil {

@@ -2,6 +2,7 @@ package grpcprobe
 
 import (
 	"context"
+	"errors"
 	"io"
 	"sync"
 	"time"
@@ -98,7 +99,7 @@ func (r *StreamRun) receive(ctx context.Context, spec StreamSpec) {
 		err := stream.RecvMsg(message)
 		if err != nil {
 			code := status.Code(err)
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				code = codes.OK
 			}
 			r.update(func(snapshot *StreamSnapshot) {

@@ -48,14 +48,14 @@ func Package(ctx context.Context, options PackageOptions) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("resolve release output: %w", err)
 	}
-	if err := os.MkdirAll(releaseOutput, 0o755); err != nil {
+	if err := os.MkdirAll(releaseOutput, 0o755); err != nil { // #nosec G301 -- Release artifacts are intentionally shareable.
 		return nil, fmt.Errorf("create release output: %w", err)
 	}
 	temporary, err := os.MkdirTemp(releaseOutput, ".draincheck-release-*")
 	if err != nil {
 		return nil, fmt.Errorf("create release workspace: %w", err)
 	}
-	defer os.RemoveAll(temporary)
+	defer func() { _ = os.RemoveAll(temporary) }()
 
 	goBinary := options.GoBinary
 	if goBinary == "" {
@@ -65,7 +65,7 @@ func Package(ctx context.Context, options PackageOptions) ([]string, error) {
 	artifacts := make([]string, 0, len(options.Architectures))
 	for _, architecture := range options.Architectures {
 		binaryDir := filepath.Join(temporary, architecture)
-		if err := os.MkdirAll(binaryDir, 0o755); err != nil {
+		if err := os.MkdirAll(binaryDir, 0o755); err != nil { // #nosec G301 -- Packaged binaries require traversal during archiving.
 			return nil, fmt.Errorf("create %s build directory: %w", architecture, err)
 		}
 		binaryPath := filepath.Join(binaryDir, "draincheck")
@@ -76,7 +76,7 @@ func Package(ctx context.Context, options PackageOptions) ([]string, error) {
 			"-X", "main.commit=" + options.Commit,
 			"-X", "main.date=" + buildDate,
 		}, " ")
-		command := exec.CommandContext(ctx, goBinary,
+		command := exec.CommandContext(ctx, goBinary, // #nosec G204 -- The caller may override the Go tool for release tests.
 			"build",
 			"-buildvcs=false",
 			"-trimpath",
@@ -139,7 +139,7 @@ func WriteChecksums(outputDir string) (string, error) {
 	var checksums strings.Builder
 	for _, name := range names {
 		path := filepath.Join(outputDir, name)
-		file, err := os.Open(path)
+		file, err := os.Open(path) // #nosec G304 -- The filename comes from the selected release output directory.
 		if err != nil {
 			return "", fmt.Errorf("open release artifact %q: %w", name, err)
 		}
@@ -217,7 +217,7 @@ func buildEnvironment(environment []string, architecture string) []string {
 
 func writeArchive(path string, entries []archiveEntry, timestamp time.Time) error {
 	directory := filepath.Dir(path)
-	if err := os.MkdirAll(directory, 0o755); err != nil {
+	if err := os.MkdirAll(directory, 0o755); err != nil { // #nosec G301 -- Release artifacts are intentionally shareable.
 		return fmt.Errorf("create archive directory: %w", err)
 	}
 	temporary, err := os.CreateTemp(directory, ".draincheck-archive-*")
@@ -225,19 +225,19 @@ func writeArchive(path string, entries []archiveEntry, timestamp time.Time) erro
 		return fmt.Errorf("create temporary archive: %w", err)
 	}
 	temporaryPath := temporary.Name()
-	defer os.Remove(temporaryPath)
+	defer func() { _ = os.Remove(temporaryPath) }()
 	if err := temporary.Chmod(0o644); err != nil {
-		temporary.Close()
+		_ = temporary.Close()
 		return fmt.Errorf("set archive permissions: %w", err)
 	}
 
 	gzipWriter, err := gzip.NewWriterLevel(temporary, gzip.BestCompression)
 	if err != nil {
-		temporary.Close()
+		_ = temporary.Close()
 		return fmt.Errorf("create gzip writer: %w", err)
 	}
-	gzipWriter.Header.ModTime = timestamp
-	gzipWriter.Header.OS = 255
+	gzipWriter.ModTime = timestamp
+	gzipWriter.OS = 255
 	tarWriter := tar.NewWriter(gzipWriter)
 	for _, entry := range entries {
 		info, err := os.Stat(entry.path)
@@ -274,16 +274,16 @@ func writeArchive(path string, entries []archiveEntry, timestamp time.Time) erro
 		}
 	}
 	if err := tarWriter.Close(); err != nil {
-		gzipWriter.Close()
-		temporary.Close()
+		_ = gzipWriter.Close()
+		_ = temporary.Close()
 		return fmt.Errorf("close tar archive: %w", err)
 	}
 	if err := gzipWriter.Close(); err != nil {
-		temporary.Close()
+		_ = temporary.Close()
 		return fmt.Errorf("close gzip archive: %w", err)
 	}
 	if err := temporary.Sync(); err != nil {
-		temporary.Close()
+		_ = temporary.Close()
 		return fmt.Errorf("sync archive: %w", err)
 	}
 	if err := temporary.Close(); err != nil {
@@ -303,7 +303,7 @@ func closeArchiveWriters(tarWriter *tar.Writer, gzipWriter *gzip.Writer, file *o
 
 func writeAtomic(path string, reader io.Reader, mode os.FileMode) error {
 	directory := filepath.Dir(path)
-	if err := os.MkdirAll(directory, 0o755); err != nil {
+	if err := os.MkdirAll(directory, 0o755); err != nil { // #nosec G301 -- Release artifacts are intentionally shareable.
 		return err
 	}
 	temporary, err := os.CreateTemp(directory, ".draincheck-release-*")
@@ -311,17 +311,17 @@ func writeAtomic(path string, reader io.Reader, mode os.FileMode) error {
 		return err
 	}
 	temporaryPath := temporary.Name()
-	defer os.Remove(temporaryPath)
+	defer func() { _ = os.Remove(temporaryPath) }()
 	if err := temporary.Chmod(mode); err != nil {
-		temporary.Close()
+		_ = temporary.Close()
 		return err
 	}
 	if _, err := io.Copy(temporary, reader); err != nil {
-		temporary.Close()
+		_ = temporary.Close()
 		return err
 	}
 	if err := temporary.Sync(); err != nil {
-		temporary.Close()
+		_ = temporary.Close()
 		return err
 	}
 	if err := temporary.Close(); err != nil {

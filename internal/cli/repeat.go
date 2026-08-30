@@ -81,7 +81,7 @@ func newRepeatCommand(stdout io.Writer) *cobra.Command {
 			summary.Profile = string(profile)
 			var primaryErr error
 			for index := 1; index <= runs; index++ {
-				fmt.Fprintf(stdout, "Run %d/%d: ", index, runs)
+				_, _ = fmt.Fprintf(stdout, "Run %d/%d: ", index, runs)
 				result, runErr := lifecycle.Verify(command.Context(), cfg, runtime, lifecycle.Options{
 					PullPolicy: pull,
 					LogLimit:   logLimit,
@@ -101,13 +101,13 @@ func newRepeatCommand(stdout io.Writer) *cobra.Command {
 						runErr = reportErr
 					}
 					if result.Passed && runErr == nil {
-						fmt.Fprintf(stdout, "PASS (%s)\n", time.Duration(result.DurationMS)*time.Millisecond)
+						_, _ = fmt.Fprintf(stdout, "PASS (%s)\n", time.Duration(result.DurationMS)*time.Millisecond)
 					} else {
-						fmt.Fprintln(stdout)
+						_, _ = fmt.Fprintln(stdout)
 						result.WriteHuman(stdout)
 					}
 				} else {
-					fmt.Fprintln(stdout, "ERROR")
+					_, _ = fmt.Fprintln(stdout, "ERROR")
 				}
 				summary.Add(index, result, runErr, filepath.ToSlash(artifactDirectory))
 				if runErr != nil {
@@ -123,7 +123,7 @@ func newRepeatCommand(stdout io.Writer) *cobra.Command {
 				primaryErr = err
 			}
 			summary.WriteHuman(stdout)
-			fmt.Fprintf(stdout, "\nEvidence: %s\n", reportDirectory)
+			_, _ = fmt.Fprintf(stdout, "\nEvidence: %s\n", reportDirectory)
 
 			if primaryErr != nil {
 				if errors.Is(primaryErr, context.Canceled) || command.Context().Err() != nil {

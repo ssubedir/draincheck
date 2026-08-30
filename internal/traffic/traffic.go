@@ -198,7 +198,7 @@ func (r *Run) request(id int) Result {
 		}
 		return failed(result, started, kind, err)
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	if _, err := io.Copy(io.Discard, response.Body); err != nil {
 		return failed(result, started, "response_body", err)
 	}

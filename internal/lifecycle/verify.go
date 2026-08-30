@@ -228,7 +228,7 @@ func (v *verifier) run(ctx context.Context) (runErr error) {
 	default:
 		return fmt.Errorf("unsupported readiness driver %q", v.config.Readiness.Driver)
 	}
-	defer readinessChecker.Close()
+	defer func() { _ = readinessChecker.Close() }()
 	ready, description, err := v.waitReady(ctx, readinessChecker)
 	if err != nil {
 		return err
@@ -249,7 +249,7 @@ func (v *verifier) run(ctx context.Context) (runErr error) {
 			return err
 		}
 		v.grpcTrafficClient = grpcClient
-		defer grpcClient.Close()
+		defer func() { _ = grpcClient.Close() }()
 	}
 	if v.config.Traffic.Driver == config.TrafficDriverGRPC {
 		prepareCtx, cancelPrepare := context.WithTimeout(ctx, v.config.Traffic.RequestTimeout.Value())
@@ -270,7 +270,7 @@ func (v *verifier) run(ctx context.Context) (runErr error) {
 			return err
 		}
 		v.grpcStreamClient = grpcClient
-		defer grpcClient.Close()
+		defer func() { _ = grpcClient.Close() }()
 		prepareCtx, cancelPrepare := context.WithTimeout(ctx, v.config.Streaming.GRPC.EstablishTimeout.Value())
 		call, err := v.grpcStreamClient.Prepare(prepareCtx, v.config.Streaming.GRPC.Method, v.config.Streaming.GRPC.DescriptorBytes(), v.config.Streaming.GRPC.RequestBytes(), true)
 		cancelPrepare()
@@ -674,7 +674,7 @@ func (v *verifier) startTrafficRun(ctx context.Context, baseURL, phase string, c
 func (v *verifier) waitReady(ctx context.Context, checker readiness.Checker) (bool, string, error) {
 	waitCtx, cancel := context.WithTimeout(ctx, v.config.Readiness.StartupTimeout.Value())
 	defer cancel()
-	last := "readiness was never observed"
+	var last string
 	for {
 		probeBudget := min(v.config.Readiness.StartupTimeout.Value(), time.Second)
 		probeCtx, cancelProbe := context.WithTimeout(waitCtx, probeBudget)

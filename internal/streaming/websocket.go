@@ -113,7 +113,7 @@ func (r *WebSocketRun) read(ctx context.Context, client *http.Client, spec WebSo
 		}
 		return
 	}
-	defer connection.CloseNow()
+	defer func() { _ = connection.CloseNow() }()
 	connection.SetReadLimit(maxWebSocketMessageBytes)
 	r.update(func(snapshot *WebSocketSnapshot) {
 		snapshot.Established = true

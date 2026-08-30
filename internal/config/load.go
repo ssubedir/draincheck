@@ -23,7 +23,7 @@ func LoadFile(path string) (Config, error) {
 }
 
 func LoadFileWithProfile(path string, profile Profile) (Config, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		return Config{}, fmt.Errorf("read config: %w", err)
 	}
@@ -97,7 +97,7 @@ func resolveBoundedFile(configDirectory, configuredPath string, limit int, descr
 	if err != nil {
 		return nil, false, fmt.Errorf("read %s file: %w", description, err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	data, err := io.ReadAll(io.LimitReader(file, int64(limit)+1))
 	if err != nil {
 		return nil, false, fmt.Errorf("read %s file: %w", description, err)
@@ -203,7 +203,7 @@ func (c *Config) resolveRequestBody(configDirectory string) error {
 	if err != nil {
 		return fmt.Errorf("read traffic request body file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	data, err := io.ReadAll(io.LimitReader(file, maxRequestBodyBytes+1))
 	if err != nil {
 		return fmt.Errorf("read traffic request body file: %w", err)

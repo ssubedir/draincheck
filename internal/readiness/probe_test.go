@@ -23,7 +23,7 @@ func TestHTTPCheckerReportsConfiguredReadiness(t *testing.T) {
 	}))
 	defer server.Close()
 	checker := NewHTTP(server.URL, http.StatusOK)
-	defer checker.Close()
+	defer func() { _ = checker.Close() }()
 
 	observation := checker.Check(context.Background())
 	if observation.Ready || observation.Err != nil || observation.Description != "HTTP 202" {
@@ -37,7 +37,7 @@ func TestHTTPCheckerReportsConfiguredReadiness(t *testing.T) {
 }
 
 func TestGRPCCheckerUsesStandardHealthStatus(t *testing.T) {
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	listener, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func TestGRPCCheckerUsesStandardHealthStatus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer checker.Close()
+	defer func() { _ = checker.Close() }()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
@@ -68,7 +68,7 @@ func TestGRPCCheckerUsesStandardHealthStatus(t *testing.T) {
 }
 
 func TestGRPCCheckerClassifiesHealthRPCFailure(t *testing.T) {
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	listener, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func TestGRPCCheckerClassifiesHealthRPCFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer checker.Close()
+	defer func() { _ = checker.Close() }()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 

@@ -106,7 +106,7 @@ func (r *SSERun) read(ctx context.Context, client *http.Client, spec SSESpec) {
 		}
 		return
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 
 	contentType := response.Header.Get("Content-Type")
 	r.update(func(snapshot *SSESnapshot) {

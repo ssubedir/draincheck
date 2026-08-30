@@ -21,7 +21,7 @@ func TestWriteJSONAndJUnit(t *testing.T) {
 	if err := WriteJSON(jsonPath, value); err != nil {
 		t.Fatal(err)
 	}
-	data, err := os.ReadFile(jsonPath)
+	data, err := os.ReadFile(jsonPath) // #nosec G304 -- Test paths are created under t.TempDir.
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func TestWriteJSONAndJUnit(t *testing.T) {
 	if err := WriteJUnit(junitPath, value); err != nil {
 		t.Fatal(err)
 	}
-	xmlData, err := os.ReadFile(junitPath)
+	xmlData, err := os.ReadFile(junitPath) // #nosec G304 -- Test paths are created under t.TempDir.
 	if err != nil {
 		t.Fatal(err)
 	}

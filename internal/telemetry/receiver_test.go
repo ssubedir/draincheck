@@ -160,7 +160,7 @@ func TestMetricExporterEnvironmentPreservesResourceAttributes(t *testing.T) {
 
 func TestReceiverRejectsOversizedBodyWithContentTooLarge(t *testing.T) {
 	receiver := &Receiver{token: "test-token"}
-	request := httptest.NewRequest(http.MethodPost, "/v1/traces", bytes.NewReader(nil))
+	request := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/v1/traces", bytes.NewReader(nil))
 	request.ContentLength = maxRequestBytes + 1
 	request.Header.Set("Content-Type", "application/x-protobuf")
 	request.Header.Set(tokenHeader, receiver.token)
@@ -254,7 +254,7 @@ func postExport(t *testing.T, receiver *Receiver, exportRequest *collectortrace.
 		payload = buffer.Bytes()
 	}
 	port := receiver.listener.Addr().(*net.TCPAddr).Port
-	request, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://127.0.0.1:%d/v1/traces", port), bytes.NewReader(payload))
+	request, err := http.NewRequestWithContext(context.Background(), http.MethodPost, fmt.Sprintf("http://127.0.0.1:%d/v1/traces", port), bytes.NewReader(payload))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -287,7 +287,7 @@ func postMetricExport(t *testing.T, receiver *Receiver, exportRequest *collector
 		t.Fatal(err)
 	}
 	port := receiver.listener.Addr().(*net.TCPAddr).Port
-	request, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://127.0.0.1:%d/v1/metrics", port), bytes.NewReader(payload))
+	request, err := http.NewRequestWithContext(context.Background(), http.MethodPost, fmt.Sprintf("http://127.0.0.1:%d/v1/metrics", port), bytes.NewReader(payload))
 	if err != nil {
 		t.Fatal(err)
 	}

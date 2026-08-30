@@ -13,7 +13,7 @@ func newVersionCommand(stdout io.Writer, build BuildInfo) *cobra.Command {
 		Short: "Print version and build metadata",
 		Args:  cobra.NoArgs,
 		Run: func(_ *cobra.Command, _ []string) {
-			fmt.Fprintf(stdout, "draincheck %s (commit %s, built %s)\n", build.Version, build.Commit, build.Date)
+			_, _ = fmt.Fprintf(stdout, "draincheck %s (commit %s, built %s)\n", build.Version, build.Commit, build.Date)
 		},
 	}
 }

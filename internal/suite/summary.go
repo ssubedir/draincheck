@@ -99,7 +99,7 @@ func (s *Summary) WriteHuman(writer io.Writer) {
 	if !s.Passed {
 		verdict = "FAIL"
 	}
-	fmt.Fprintf(
+	_, _ = fmt.Fprintf(
 		writer,
 		"\nSUITE %s %s: %d/%d scenarios passed (%s)\n",
 		verdict,
@@ -111,7 +111,7 @@ func (s *Summary) WriteHuman(writer io.Writer) {
 	if s.ScenariosFailed == 0 {
 		return
 	}
-	fmt.Fprintln(writer, "\nFailed scenarios:")
+	_, _ = fmt.Fprintln(writer, "\nFailed scenarios:")
 	for _, scenario := range s.Scenarios {
 		if scenario.Passed {
 			continue
@@ -120,6 +120,6 @@ func (s *Summary) WriteHuman(writer io.Writer) {
 		if detail == "" {
 			detail = strings.Join(scenario.FailedAssertions, ", ")
 		}
-		fmt.Fprintf(writer, "  - %s: %s\n", scenario.Name, detail)
+		_, _ = fmt.Fprintf(writer, "  - %s: %s\n", scenario.Name, detail)
 	}
 }

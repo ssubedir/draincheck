@@ -19,7 +19,8 @@ type commandRunner interface {
 type execRunner struct{}
 
 func (execRunner) Run(ctx context.Context, binary string, limit int64, args ...string) commandResult {
-	command := exec.CommandContext(ctx, binary, args...)
+	// The runtime binary and arguments are the purpose of this internal process adapter.
+	command := exec.CommandContext(ctx, binary, args...) // #nosec G204 G702 -- Inputs come from validated runtime operations.
 	stdout := &cappedBuffer{limit: limit}
 	stderr := &cappedBuffer{limit: limit}
 	command.Stdout = stdout

@@ -134,7 +134,7 @@ func readDebugBundle(t *testing.T, path string) map[string][]byte {
 	if err != nil {
 		t.Fatalf("open debug bundle: %v", err)
 	}
-	defer archive.Close()
+	defer func() { _ = archive.Close() }()
 	entries := make(map[string][]byte, len(archive.File))
 	for _, file := range archive.File {
 		reader, err := file.Open()

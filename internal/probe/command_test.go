@@ -109,9 +109,9 @@ func TestCommandProbeHelperProcess(t *testing.T) {
 		return
 	}
 	mode := os.Getenv("DRAINCHECK_TEST_PROBE_MODE")
-	active := func() { fmt.Fprintln(os.Stdout, `{"type":"active"}`) }
+	active := func() { _, _ = fmt.Fprintln(os.Stdout, `{"type":"active"}`) }
 	result := func(success bool) {
-		fmt.Fprintf(os.Stdout, "{\"type\":\"result\",\"success\":%t}\n", success)
+		_, _ = fmt.Fprintf(os.Stdout, "{\"type\":\"result\",\"success\":%t}\n", success)
 	}
 	switch mode {
 	case "success":
@@ -134,19 +134,19 @@ func TestCommandProbeHelperProcess(t *testing.T) {
 	case "missing-result":
 		active()
 	case "malformed":
-		fmt.Fprintln(os.Stdout, "not-json")
+		_, _ = fmt.Fprintln(os.Stdout, "not-json")
 	case "unknown-field":
-		fmt.Fprintln(os.Stdout, `{"type":"active","unknown":true}`)
+		_, _ = fmt.Fprintln(os.Stdout, `{"type":"active","unknown":true}`)
 	case "active-message":
-		fmt.Fprintln(os.Stdout, `{"type":"active","message":"too early"}`)
+		_, _ = fmt.Fprintln(os.Stdout, `{"type":"active","message":"too early"}`)
 	case "message-limit":
 		active()
-		fmt.Fprintf(os.Stdout, `{"type":"result","success":true,"message":"%s"}`+"\n", strings.Repeat("x", maxMessageBytes+1))
+		_, _ = fmt.Fprintf(os.Stdout, `{"type":"result","success":true,"message":"%s"}`+"\n", strings.Repeat("x", maxMessageBytes+1))
 	case "output-limit":
 		active()
-		fmt.Fprint(os.Stdout, strings.Repeat("\n", maxProtocolBytes))
+		_, _ = fmt.Fprint(os.Stdout, strings.Repeat("\n", maxProtocolBytes))
 	case "line-limit":
-		fmt.Fprintln(os.Stdout, strings.Repeat("x", maxProtocolLine+1))
+		_, _ = fmt.Fprintln(os.Stdout, strings.Repeat("x", maxProtocolLine+1))
 	case "nonzero":
 		active()
 		result(true)

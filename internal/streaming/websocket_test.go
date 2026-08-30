@@ -126,7 +126,7 @@ func webSocketServer(t *testing.T, serve func(context.Context, *websocket.Conn),
 		if err != nil {
 			return
 		}
-		defer connection.CloseNow()
+		defer func() { _ = connection.CloseNow() }()
 		serve(request.Context(), connection)
 	}))
 }

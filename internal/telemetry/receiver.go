@@ -28,7 +28,7 @@ const (
 	ProtocolHTTPProtobuf = "http/protobuf"
 	GatewayHost          = "host.draincheck.internal"
 	RunIDAttribute       = "draincheck.run.id"
-	tokenHeader          = "X-Draincheck-Token"
+	tokenHeader          = "X-Draincheck-Token" // #nosec G101 -- This is a header name, not a credential.
 	maxRequestBytes      = 16 << 20
 )
 
@@ -75,7 +75,8 @@ func StartReceiver(correlations []Correlation, runID string) (*Receiver, error) 
 	if _, err := rand.Read(tokenBytes); err != nil {
 		return nil, fmt.Errorf("generate OTLP receiver token: %w", err)
 	}
-	listener, err := net.Listen("tcp4", "0.0.0.0:0")
+	// The receiver must be reachable from the container through the runtime gateway.
+	listener, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp4", "0.0.0.0:0") // #nosec G102 -- Loopback would make the receiver unreachable.
 	if err != nil {
 		return nil, fmt.Errorf("listen for OTLP/HTTP: %w", err)
 	}
@@ -293,7 +294,7 @@ func (r *Receiver) readPayload(writer http.ResponseWriter, request *http.Request
 			r.reject(writer, http.StatusBadRequest, "invalid gzip body")
 			return nil, false
 		}
-		defer compressed.Close()
+		defer func() { _ = compressed.Close() }()
 		body = compressed
 	}
 	payload, err := io.ReadAll(io.LimitReader(body, maxRequestBytes+1))

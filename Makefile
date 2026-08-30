@@ -14,6 +14,7 @@ RELEASE_DATE ?= $(shell git show -s --format=%cI HEAD 2>/dev/null || date -u +%Y
 VERSION ?= dev
 COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 BUILD_DATE ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+GOLANGCI_LINT_VERSION ?= v2.12.2
 LDFLAGS := -s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(BUILD_DATE)
 
 .PHONY: build test race format-check lint vulncheck check schema fixtures e2e dogfood pilot external-pilot release-dry-run clean
@@ -37,16 +38,14 @@ format-check:
 	fi
 
 lint:
-	go vet ./...
-	go tool staticcheck ./...
+	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) run
 
 vulncheck:
 	go tool govulncheck ./...
 
 check: format-check
 	go mod verify
-	go vet ./...
-	go tool staticcheck ./...
+	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) run
 	go test -race ./...
 	go tool govulncheck ./...
 	go build ./...

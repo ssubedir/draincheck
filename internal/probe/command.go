@@ -201,7 +201,8 @@ func (r *Run) execute(id int) traffic.Result {
 	ctx, cancel := context.WithTimeout(r.ctx, r.spec.Timeout)
 	defer cancel()
 
-	command := exec.CommandContext(ctx, r.spec.Executable, r.spec.Args...)
+	// Running the explicitly configured probe command is the feature under test.
+	command := exec.CommandContext(ctx, r.spec.Executable, r.spec.Args...) // #nosec G204 -- The contract author controls this local command.
 	command.Dir = r.spec.Directory
 	command.Env = commandEnvironment(r.spec, id)
 	stdout, err := command.StdoutPipe()

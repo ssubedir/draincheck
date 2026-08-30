@@ -66,7 +66,7 @@ func TestSummaryRecordsExecutionErrorAndIncompleteRuns(t *testing.T) {
 	if err := WriteJSON(jsonPath, summary); err != nil {
 		t.Fatal(err)
 	}
-	data, err := os.ReadFile(jsonPath)
+	data, err := os.ReadFile(jsonPath) // #nosec G304 -- Test paths are created under t.TempDir.
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,7 +82,7 @@ func TestSummaryRecordsExecutionErrorAndIncompleteRuns(t *testing.T) {
 	if err := WriteJUnit(junitPath, summary); err != nil {
 		t.Fatal(err)
 	}
-	xmlData, err := os.ReadFile(junitPath)
+	xmlData, err := os.ReadFile(junitPath) // #nosec G304 -- Test paths are created under t.TempDir.
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -180,7 +180,7 @@ func TestSummaryFailsExceededBudgetWithoutFailingRuns(t *testing.T) {
 	if err := WriteJUnit(junitPath, summary); err != nil {
 		t.Fatal(err)
 	}
-	data, err := os.ReadFile(junitPath)
+	data, err := os.ReadFile(junitPath) // #nosec G304 -- Test paths are created under t.TempDir.
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,7 +220,7 @@ func TestSummarySkipsBudgetsWhenLifecycleSampleIsIncomplete(t *testing.T) {
 	if err := WriteJUnit(junitPath, summary); err != nil {
 		t.Fatal(err)
 	}
-	data, err := os.ReadFile(junitPath)
+	data, err := os.ReadFile(junitPath) // #nosec G304 -- Test paths are created under t.TempDir.
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -261,7 +261,7 @@ func TestBudgetAssertionJSONRequiredFields(t *testing.T) {
 
 func passingReport(index int, durationMS int64) *report.Report {
 	started := time.Unix(int64(index), 0)
-	value := report.New(string(rune('a'+index)), "example:test", "fake", started)
+	value := report.New(fmt.Sprintf("run-%d", index), "example:test", "fake", started)
 	value.Timings = report.TimingSummary{
 		StartupReadyMS:        durationMS / 4,
 		PreStopMS:             5,

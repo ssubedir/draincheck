@@ -819,7 +819,7 @@ func newFakeRuntime(t *testing.T, ignoreSignal bool) (*fakeRuntime, *httptest.Se
 			if err != nil {
 				return
 			}
-			defer connection.CloseNow()
+			defer func() { _ = connection.CloseNow() }()
 			<-runtime.webSocketShutdown
 			if runtime.webSocketTerminal {
 				if err := connection.Write(request.Context(), websocket.MessageText, []byte("shutdown")); err != nil {

@@ -21,10 +21,10 @@ func TestSSEObservesInitialTerminalAndCleanEOF(t *testing.T) {
 	}()
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 		writer.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
-		fmt.Fprint(writer, "event: ready\ndata: connected\n\n")
+		_, _ = fmt.Fprint(writer, "event: ready\ndata: connected\n\n")
 		writer.(http.Flusher).Flush()
 		<-closeStream
-		fmt.Fprint(writer, "event: shutdown\ndata: draining\n\n")
+		_, _ = fmt.Fprint(writer, "event: shutdown\ndata: draining\n\n")
 	}))
 	defer server.Close()
 
@@ -45,7 +45,7 @@ func TestSSEObservesInitialTerminalAndCleanEOF(t *testing.T) {
 func TestSSECleanEOFWithoutTerminalEvent(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 		writer.Header().Set("Content-Type", "text/event-stream")
-		fmt.Fprint(writer, "event: ready\ndata: connected\n\n")
+		_, _ = fmt.Fprint(writer, "event: ready\ndata: connected\n\n")
 	}))
 	defer server.Close()
 
@@ -61,7 +61,7 @@ func TestSSECleanEOFWithoutTerminalEvent(t *testing.T) {
 func TestSSERejectsEOFBeforeInitialEvent(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 		writer.Header().Set("Content-Type", "text/event-stream")
-		fmt.Fprint(writer, "event: other\n\n")
+		_, _ = fmt.Fprint(writer, "event: other\n\n")
 	}))
 	defer server.Close()
 
@@ -76,7 +76,7 @@ func TestSSERejectsEOFBeforeInitialEvent(t *testing.T) {
 func TestSSEDoesNotDispatchEventWithoutData(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 		writer.Header().Set("Content-Type", "text/event-stream")
-		fmt.Fprint(writer, "event: ready\n\n")
+		_, _ = fmt.Fprint(writer, "event: ready\n\n")
 	}))
 	defer server.Close()
 
@@ -91,7 +91,7 @@ func TestSSEDoesNotDispatchEventWithoutData(t *testing.T) {
 func TestSSERejectsInvalidContentType(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 		writer.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(writer, `{}`)
+		_, _ = fmt.Fprint(writer, `{}`)
 	}))
 	defer server.Close()
 
@@ -106,7 +106,7 @@ func TestSSERejectsInvalidContentType(t *testing.T) {
 func TestSSEBoundsOversizedLines(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 		writer.Header().Set("Content-Type", "text/event-stream")
-		fmt.Fprintf(writer, "data: %s\n\n", strings.Repeat("x", maxSSELineBytes))
+		_, _ = fmt.Fprintf(writer, "data: %s\n\n", strings.Repeat("x", maxSSELineBytes))
 	}))
 	defer server.Close()
 

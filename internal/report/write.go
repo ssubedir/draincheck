@@ -46,7 +46,7 @@ func WriteFile(path string, data []byte) error {
 
 func writeAtomic(path string, data []byte) error {
 	directory := filepath.Dir(path)
-	if err := os.MkdirAll(directory, 0o755); err != nil {
+	if err := os.MkdirAll(directory, 0o755); err != nil { // #nosec G301 -- CI report directories contain non-secret artifacts.
 		return fmt.Errorf("create report directory: %w", err)
 	}
 	file, err := os.CreateTemp(directory, ".draincheck-*")
@@ -54,14 +54,14 @@ func writeAtomic(path string, data []byte) error {
 		return fmt.Errorf("create temporary report: %w", err)
 	}
 	tempName := file.Name()
-	defer os.Remove(tempName)
+	defer func() { _ = os.Remove(tempName) }()
 
 	if _, err := file.Write(data); err != nil {
-		file.Close()
+		_ = file.Close()
 		return fmt.Errorf("write temporary report: %w", err)
 	}
 	if err := file.Sync(); err != nil {
-		file.Close()
+		_ = file.Close()
 		return fmt.Errorf("sync temporary report: %w", err)
 	}
 	if err := file.Close(); err != nil {

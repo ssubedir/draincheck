@@ -7,9 +7,25 @@ linters:
     - errorlint
     - gosec
     - misspell
+    - nilerr
+    - nilnesserr
+    - noctx
+    - nolintlint
     - revive
+    - usetesting
+  settings:
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
 
 formatters:
   enable:
     - gofmt
     - goimports
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

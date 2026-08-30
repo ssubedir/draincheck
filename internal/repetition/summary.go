@@ -165,7 +165,7 @@ func (s *Summary) WriteHuman(writer io.Writer) {
 	if !s.Passed {
 		verdict = "FAIL"
 	}
-	fmt.Fprintf(
+	_, _ = fmt.Fprintf(
 		writer,
 		"\nREPEAT %s %s: %d/%d runs passed (%s)\n",
 		verdict,
@@ -175,7 +175,7 @@ func (s *Summary) WriteHuman(writer io.Writer) {
 		time.Duration(s.DurationMS)*time.Millisecond,
 	)
 	if s.Timings.Verification.Samples > 0 {
-		fmt.Fprintln(writer, "\nPassing-run timing distribution:")
+		_, _ = fmt.Fprintln(writer, "\nPassing-run timing distribution:")
 		writeTiming(writer, "verification", s.Timings.Verification)
 		writeTiming(writer, "startup ready", s.Timings.StartupReady)
 		if s.Timings.PreStop.Samples > 0 {
@@ -187,7 +187,7 @@ func (s *Summary) WriteHuman(writer io.Writer) {
 		writeTiming(writer, "shutdown total", s.Timings.ShutdownTotal)
 	}
 	if len(s.BudgetAssertions) > 0 {
-		fmt.Fprintln(writer, "\nRepeat budget assertions:")
+		_, _ = fmt.Fprintln(writer, "\nRepeat budget assertions:")
 		for _, assertion := range s.BudgetAssertions {
 			verdict := "SKIP"
 			if assertion.Evaluated {
@@ -196,11 +196,11 @@ func (s *Summary) WriteHuman(writer io.Writer) {
 					verdict = "FAIL"
 				}
 			}
-			fmt.Fprintf(writer, "  - %-4s %s: %s\n", verdict, assertion.Name, assertion.Message)
+			_, _ = fmt.Fprintf(writer, "  - %-4s %s: %s\n", verdict, assertion.Name, assertion.Message)
 		}
 	}
 	if s.RunsFailed > 0 {
-		fmt.Fprintln(writer, "\nFailed runs:")
+		_, _ = fmt.Fprintln(writer, "\nFailed runs:")
 		for _, run := range s.Runs {
 			if run.Passed {
 				continue
@@ -209,7 +209,7 @@ func (s *Summary) WriteHuman(writer io.Writer) {
 			if detail == "" {
 				detail = strings.Join(run.FailedAssertions, ", ")
 			}
-			fmt.Fprintf(writer, "  - run %d: %s\n", run.Index, detail)
+			_, _ = fmt.Fprintf(writer, "  - run %d: %s\n", run.Index, detail)
 		}
 	}
 }
@@ -273,7 +273,7 @@ func nearestRank(sorted []int64, percentile float64) int64 {
 }
 
 func writeTiming(writer io.Writer, name string, value DurationStats) {
-	fmt.Fprintf(
+	_, _ = fmt.Fprintf(
 		writer,
 		"  %-22s min %s  p50 %s  p95 %s  max %s\n",
 		name+":",

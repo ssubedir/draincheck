@@ -27,7 +27,7 @@ func newSchemaCommand(stdout io.Writer) *cobra.Command {
 			if err := report.WriteFile(output, data); err != nil {
 				return &exitError{code: 3, err: err}
 			}
-			fmt.Fprintf(stdout, "wrote %s\n", output)
+			_, _ = fmt.Fprintf(stdout, "wrote %s\n", output)
 			return nil
 		},
 	}

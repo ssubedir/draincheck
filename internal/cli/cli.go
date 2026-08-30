@@ -44,14 +44,14 @@ func Execute(ctx context.Context, args []string, stdout, stderr io.Writer, build
 	var coded *exitError
 	if errors.As(err, &coded) {
 		if !coded.silent && coded.err != nil {
-			fmt.Fprintln(stderr, "error:", coded.err)
+			_, _ = fmt.Fprintln(stderr, "error:", coded.err)
 		}
 		return coded.code
 	}
 	if errors.Is(err, context.Canceled) || ctx.Err() != nil {
 		return 130
 	}
-	fmt.Fprintln(stderr, "error:", err)
+	_, _ = fmt.Fprintln(stderr, "error:", err)
 	return 2
 }
 

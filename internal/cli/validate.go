@@ -27,7 +27,7 @@ func newValidateCommand(stdout io.Writer) *cobra.Command {
 			if err := cfg.Validate(false); err != nil {
 				return &exitError{code: 2, err: err}
 			}
-			fmt.Fprintf(stdout, "%s is valid\n", path)
+			_, _ = fmt.Fprintf(stdout, "%s is valid\n", path)
 			return nil
 		},
 	}

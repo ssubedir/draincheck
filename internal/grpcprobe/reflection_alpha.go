@@ -1,5 +1,3 @@
-//lint:file-ignore SA1019 gRPC reflection v1alpha is a deliberate compatibility fallback for older servers.
-
 package grpcprobe
 
 import (
@@ -10,13 +8,14 @@ import (
 	reflectionv1alpha "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
 )
 
+//nolint:staticcheck // Supporting the deprecated protocol is an intentional compatibility fallback.
 func (c *Client) reflectV1Alpha(ctx context.Context, serviceName string) ([][]byte, error) {
 	client := reflectionv1alpha.NewServerReflectionClient(c.connection)
 	stream, err := client.ServerReflectionInfo(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("start gRPC reflection v1alpha: %w", err)
 	}
-	defer stream.CloseSend()
+	defer func() { _ = stream.CloseSend() }()
 	if err := stream.Send(&reflectionv1alpha.ServerReflectionRequest{
 		MessageRequest: &reflectionv1alpha.ServerReflectionRequest_FileContainingSymbol{FileContainingSymbol: serviceName},
 	}); err != nil {

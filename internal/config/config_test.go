@@ -349,7 +349,7 @@ func TestLoadFileResolvesCommandRelativeToConfig(t *testing.T) {
 		probeName += ".exe"
 	}
 	probePath := filepath.Join(directory, probeName)
-	if err := os.WriteFile(probePath, []byte("fixture"), 0o700); err != nil {
+	if err := os.WriteFile(probePath, []byte("fixture"), 0o700); err != nil { // #nosec G306 -- The fixture must be executable.
 		t.Fatal(err)
 	}
 	workingPath := filepath.Join(directory, "work")
