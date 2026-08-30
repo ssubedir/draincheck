@@ -7,11 +7,17 @@ on:
   pull_request:
     paths:
       - ".github/workflows/pilot.yml"
+      - "**/*.go"
+      - "go.mod"
+      - "go.sum"
       - "testdata/pilot/**"
   push:
     branches: [main]
     paths:
       - ".github/workflows/pilot.yml"
+      - "**/*.go"
+      - "go.mod"
+      - "go.sum"
       - "testdata/pilot/**"
 
 permissions:
