@@ -21,6 +21,7 @@ type Runtime interface {
 	HostPort(ctx context.Context, id string, containerPort int) (int, error)
 	Exec(ctx context.Context, id string, command []string, outputLimit int64) (ExecResult, error)
 	Signal(ctx context.Context, id string, signal string) error
+	Wait(ctx context.Context, id string) error
 	Inspect(ctx context.Context, id string) (ContainerState, error)
 	Logs(ctx context.Context, id string, limit int64) ([]byte, error)
 	Remove(ctx context.Context, id string, force bool) error

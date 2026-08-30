@@ -512,14 +512,13 @@ func (v *verifier) run(ctx context.Context) (runErr error) {
 		defer grpcStreamCloseTimer.Stop()
 	}
 
-	state, exited, err := v.waitExit(ctx, container.ID, shutdownDeadline)
+	state, exitedAt, exited, err := v.waitExit(ctx, container.ID, shutdownDeadline)
 	if err != nil {
 		cancelWithdraw()
 		return err
 	}
 	v.lastState = state
 	if exited {
-		exitedAt := time.Now()
 		v.report.Timings.ContainerExitMS = exitedAt.Sub(signalRequestedAt).Milliseconds()
 		v.report.Timings.ShutdownTotalMS = exitedAt.Sub(terminationStartedAt).Milliseconds()
 		v.report.AddEvent(exitedAt, "exited", fmt.Sprintf("container exited with code %d", state.ExitCode))
@@ -748,34 +747,24 @@ func (v *verifier) runPreStop(ctx context.Context, id string, shutdownDeadline t
 	return !finishedAt.Before(shutdownDeadline), nil
 }
 
-func (v *verifier) waitExit(ctx context.Context, id string, shutdownDeadline time.Time) (containerruntime.ContainerState, bool, error) {
+func (v *verifier) waitExit(ctx context.Context, id string, shutdownDeadline time.Time) (containerruntime.ContainerState, time.Time, bool, error) {
 	deadlineCtx, cancel := context.WithDeadline(ctx, shutdownDeadline)
 	defer cancel()
-	var last containerruntime.ContainerState
-	for {
-		state, err := v.runtime.Inspect(deadlineCtx, id)
-		if err != nil {
-			if deadlineCtx.Err() != nil {
-				if ctx.Err() != nil {
-					return last, false, ctx.Err()
-				}
-				return last, false, nil
-			}
-			return last, false, err
-		}
-		last = state
-		if !state.Running {
-			return state, true, nil
-		}
-		select {
-		case <-time.After(100 * time.Millisecond):
-		case <-deadlineCtx.Done():
+	if err := v.runtime.Wait(deadlineCtx, id); err != nil {
+		if deadlineCtx.Err() != nil {
 			if ctx.Err() != nil {
-				return last, false, ctx.Err()
+				return v.lastState, time.Time{}, false, ctx.Err()
 			}
-			return last, false, nil
+			return v.lastState, time.Time{}, false, nil
 		}
+		return v.lastState, time.Time{}, false, err
 	}
+	exitedAt := time.Now()
+	state, err := v.runtime.Inspect(ctx, id)
+	if err != nil {
+		return v.lastState, time.Time{}, false, err
+	}
+	return state, exitedAt, true, nil
 }
 
 func (v *verifier) waitTraffic(ctx context.Context, cancel context.CancelFunc, run trafficExecution) {

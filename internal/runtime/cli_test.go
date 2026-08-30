@@ -116,6 +116,40 @@ func TestInspectRejectsMalformedRuntimeState(t *testing.T) {
 	}
 }
 
+func TestWaitUsesBlockingRuntimeCommand(t *testing.T) {
+	runner := &staticRunner{}
+	runtime := &CLI{name: "podman", binary: "podman", runner: runner}
+
+	if err := runtime.Wait(context.Background(), "container-id"); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"wait", "container-id"}
+	if !reflect.DeepEqual(runner.args, want) {
+		t.Fatalf("args = %#v\nwant = %#v", runner.args, want)
+	}
+}
+
+func TestWaitReturnsContextDeadline(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	runner := &staticRunner{result: commandResult{err: errors.New("process killed")}}
+	runtime := &CLI{name: "docker", binary: "docker", runner: runner}
+
+	if err := runtime.Wait(ctx, "container-id"); !errors.Is(err, context.Canceled) {
+		t.Fatalf("Wait error = %v, want context cancellation", err)
+	}
+}
+
+func TestWaitReportsRuntimeFailure(t *testing.T) {
+	runner := &staticRunner{result: commandResult{stderr: []byte("container disappeared"), err: errors.New("exit status 1")}}
+	runtime := &CLI{name: "docker", binary: "docker", runner: runner}
+
+	err := runtime.Wait(context.Background(), "container-id")
+	if err == nil || !strings.Contains(err.Error(), "wait for container: container disappeared") {
+		t.Fatalf("Wait error = %v, want runtime failure", err)
+	}
+}
+
 func TestExecRunsArgumentVectorInsideContainer(t *testing.T) {
 	runner := &staticRunner{result: commandResult{stdout: []byte("healthy\n")}}
 	runtime := &CLI{name: "docker", binary: "docker", runner: runner}

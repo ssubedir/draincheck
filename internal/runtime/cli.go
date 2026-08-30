@@ -204,6 +204,17 @@ func (c *CLI) Signal(ctx context.Context, id string, signal string) error {
 	return nil
 }
 
+func (c *CLI) Wait(ctx context.Context, id string) error {
+	result := c.run(ctx, "wait", id)
+	if result.err == nil {
+		return nil
+	}
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	return fmt.Errorf("wait for container: %s", conciseError(result))
+}
+
 func (c *CLI) Inspect(ctx context.Context, id string) (ContainerState, error) {
 	result := c.run(ctx, "container", "inspect", "--format", "{{json .State}}", id)
 	if result.err != nil {

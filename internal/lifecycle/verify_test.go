@@ -90,6 +90,9 @@ func TestVerifyPassesGracefulLifecycle(t *testing.T) {
 	if result.Traffic.Inflight == 0 || result.Traffic.InflightBad != 0 {
 		t.Fatalf("traffic summary = %#v", result.Traffic)
 	}
+	if runtime.waitCalls != 1 {
+		t.Fatalf("runtime wait calls = %d, want 1", runtime.waitCalls)
+	}
 }
 
 func TestVerifyRunsPreStopBeforeSignalWithinSharedDeadline(t *testing.T) {
@@ -666,6 +669,30 @@ func TestVerifyCleansUpAfterMidRunRuntimeFailure(t *testing.T) {
 	}
 }
 
+func TestVerifyCleansUpAfterRuntimeWaitFailure(t *testing.T) {
+	runtime, server := newFakeRuntime(t, false)
+	defer server.Close()
+	runtime.waitError = errors.New("runtime wait failed")
+
+	result, err := Verify(context.Background(), lifecycleTestConfig(), runtime, Options{
+		PullPolicy: containerruntime.PullNever,
+		LogLimit:   1024,
+	})
+	if !errors.Is(err, runtime.waitError) {
+		t.Fatalf("error = %v, want original wait error", err)
+	}
+	failed := make(map[string]bool)
+	for _, assertion := range result.FailedAssertions() {
+		failed[assertion.Name] = true
+	}
+	if !failed["execution.completed"] || failed["cleanup.completed"] {
+		t.Fatalf("failed assertions = %#v", result.FailedAssertions())
+	}
+	if !runtime.removed || !runtime.removeForce {
+		t.Fatalf("cleanup removed=%t force=%t, want forced removal", runtime.removed, runtime.removeForce)
+	}
+}
+
 func TestVerifyReturnsCleanupFailureWhenExecutionCompletes(t *testing.T) {
 	runtime, server := newFakeRuntime(t, false)
 	defer server.Close()
@@ -769,7 +796,11 @@ type fakeRuntime struct {
 	inspectCalls             int
 	inspectErrorAfter        int
 	inspectError             error
+	waitCalls                int
+	waitError                error
 	removeError              error
+	exited                   chan struct{}
+	exitOnce                 sync.Once
 	rejectWorkWhenUnready    bool
 	webSocketShutdown        chan struct{}
 	webSocketShutdownOnce    sync.Once
@@ -789,6 +820,7 @@ func newFakeRuntime(t *testing.T, ignoreSignal bool) (*fakeRuntime, *httptest.Se
 	runtime := &fakeRuntime{
 		ready:              true,
 		ignoreSignal:       ignoreSignal,
+		exited:             make(chan struct{}),
 		webSocketShutdown:  make(chan struct{}),
 		webSocketTerminal:  true,
 		webSocketCloseCode: websocket.StatusNormalClosure,
@@ -879,7 +911,7 @@ func (f *fakeRuntime) HostPort(_ context.Context, _ string, containerPort int) (
 	defer f.mu.Unlock()
 	f.hostPortCalls = append(f.hostPortCalls, containerPort)
 	if f.exitBeforePort {
-		f.running = false
+		f.markExitedLocked()
 		return 0, errors.New("port mapping disappeared")
 	}
 	return f.port, nil
@@ -934,10 +966,31 @@ func (f *fakeRuntime) Signal(context.Context, string, string) error {
 	go func() {
 		time.Sleep(120 * time.Millisecond)
 		f.mu.Lock()
-		f.running = false
+		f.markExitedLocked()
 		f.mu.Unlock()
 	}()
 	return nil
+}
+
+func (f *fakeRuntime) Wait(ctx context.Context, _ string) error {
+	f.mu.Lock()
+	f.waitCalls++
+	err := f.waitError
+	running := f.running
+	exited := f.exited
+	f.mu.Unlock()
+	if err != nil {
+		return err
+	}
+	if !running {
+		return nil
+	}
+	select {
+	case <-exited:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func (f *fakeRuntime) Inspect(context.Context, string) (containerruntime.ContainerState, error) {
@@ -960,10 +1013,15 @@ func (f *fakeRuntime) Logs(context.Context, string, int64) ([]byte, error) {
 
 func (f *fakeRuntime) Remove(_ context.Context, _ string, force bool) error {
 	f.mu.Lock()
-	f.running = false
+	f.markExitedLocked()
 	f.removed = true
 	f.removeForce = force
 	err := f.removeError
 	f.mu.Unlock()
 	return err
+}
+
+func (f *fakeRuntime) markExitedLocked() {
+	f.running = false
+	f.exitOnce.Do(func() { close(f.exited) })
 }
